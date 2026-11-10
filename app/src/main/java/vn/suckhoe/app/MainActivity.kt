@@ -232,7 +232,7 @@ class MainActivity : Activity() {
         } else if (!hasStepPermission()) {
             sc.addView(gap(8))
             sc.addView(button("Cho phép đếm bước chân") {
-                requestPermissions(arrayOf(Manifest.permission.ACTIVITY_RECOGNITION), REQ_STEPS)
+                requestPermissions(arrayOf(Manifest.permission.ACTIVITY_RECOGNITION), REQ_START)
             }, lp())
         }
         col.addView(sc, lp())
