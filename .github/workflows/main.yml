@@ -1,0 +1,48 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Chuan bi ma nguon
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          # Giai nen tat ca file zip (moi file mot thu muc rieng)
+          n=0
+          find . -name '*.zip' -not -path './.git/*' | while read -r Z; do
+            n=$((n+1)); mkdir -p "zip_src/$n"; unzip -q -o "$Z" -d "zip_src/$n" || true
+          done
+          echo "=== Cac ban ma nguon tim thay ==="
+          BEST=""; BESTV=-1
+          for F in $(find . -path '*/app/build.gradle.kts' -not -path './.git/*'); do
+            V=$(grep -o 'versionCode = [0-9]*' "$F" | grep -o '[0-9]*$')
+            echo "$F -> versionCode $V"
+            if [ -n "$V" ] && [ "$V" -gt "$BESTV" ]; then BESTV=$V; BEST=$F; fi
+          done
+          if [ -z "$BEST" ]; then echo "LOI: Khong tim thay ma nguon."; exit 1; fi
+          P=$(dirname "$(dirname "$BEST")")
+          echo ">>> CHON: $P (versionCode $BESTV)"
+          echo "sdk.dir=$ANDROID_HOME" > "$P/local.properties"
+          echo "PROJ=$P" >> "$GITHUB_ENV"
+      - name: Build debug APK
+        run: |
+          cd "$PROJ"
+          gradle assembleDebug --stacktrace
+          mkdir -p "$GITHUB_WORKSPACE/out"
+          cp app/build/outputs/apk/debug/*.apk "$GITHUB_WORKSPACE/out/"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SucKhoe-apk
+          path: out/*.apk
